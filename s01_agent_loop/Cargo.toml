@@ -5,8 +5,8 @@ edition = "2024"
 license = { workspace = true }
 
 [dependencies]
+anthropic-ai-sdk = { workspace = true }
 anyhow = { workspace = true }
-async-openai = { workspace = true }
 dotenvy = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
