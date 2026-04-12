@@ -18,6 +18,7 @@ repos:
     rev: 25.1.0
     hooks:
       - id: black
+        exclude: ^skills/
   - repo: local
     hooks:
       - id: cargo-fmt
