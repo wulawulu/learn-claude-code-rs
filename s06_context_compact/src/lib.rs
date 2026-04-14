@@ -55,53 +55,20 @@ impl LoopState {
         let mut compact_focus = None;
         for block in content {
             if let ContentBlock::ToolUse { id, name, input } = block {
-                let Some(tool) = self.tools.get_mut(name) else {
-                    result.push(ContentBlock::ToolResult {
-                        tool_use_id: id.clone(),
-                        content: format!("Unknown tool: {}", name),
-                    });
-                    continue;
-                };
-
-                match tool.invoke(input).await {
-                    Ok(output) => {
-                        let output = if name == "bash" {
-                            match persist_large_output(id, &output) {
-                                Ok(compacted) => compacted,
-                                Err(e) => format!("Error persisting large output: {}", e),
-                            }
-                        } else {
-                            output
-                        };
-
-                        println!(
-                            "Command:{}\n arg:{}\n output:\n{}\n",
-                            name,
-                            input,
-                            output.chars().take(200).collect::<String>()
-                        );
-                        result.push(ContentBlock::ToolResult {
-                            tool_use_id: id.clone(),
-                            content: output,
-                        });
-                        if name == "read_file"
-                            && let Some(path) = input.get("path").and_then(|v| v.as_str())
-                        {
-                            self.remember_recent_file(path);
-                        }
-                        if name == "compact" {
-                            println!("[manual compact]");
-                            manual_compact = true;
-                            compact_focus = input.get("focus").and_then(|v| v.as_str());
-                        }
-                    }
-                    Err(e) => {
-                        println!("Error invoking tool {}: {}", name, e);
-                        result.push(ContentBlock::ToolResult {
-                            tool_use_id: id.clone(),
-                            content: format!("Error invoking tool {}: {}", name, e),
-                        });
-                    }
+                let output = self.execute(id, name, input).await;
+                result.push(ContentBlock::ToolResult {
+                    tool_use_id: id.clone(),
+                    content: output,
+                });
+                if name == "read_file"
+                    && let Some(path) = input.get("path").and_then(|v| v.as_str())
+                {
+                    self.remember_recent_file(path);
+                }
+                if name == "compact" {
+                    println!("[manual compact]");
+                    manual_compact = true;
+                    compact_focus = input.get("focus").and_then(|v| v.as_str());
                 }
             }
         }
@@ -112,6 +79,42 @@ impl LoopState {
                 .context("manual compact failed")?;
         }
         Ok(())
+    }
+
+    async fn execute(
+        &mut self,
+        tool_use_id: &str,
+        name: &str,
+        input: &serde_json::Value,
+    ) -> String {
+        let Some(tool) = self.tools.get_mut(name) else {
+            return format!("Unknown tool: {name}");
+        };
+
+        match tool.invoke(input).await {
+            Ok(output) => {
+                let output = if name == "bash" {
+                    match persist_large_output(tool_use_id, &output) {
+                        Ok(compacted) => compacted,
+                        Err(e) => format!("Error persisting large output: {}", e),
+                    }
+                } else {
+                    output
+                };
+
+                println!(
+                    "Command:{}\n arg:{}\n output:\n{}\n",
+                    name,
+                    input,
+                    output.chars().take(200).collect::<String>()
+                );
+                output
+            }
+            Err(e) => {
+                println!("Error invoking tool {}: {}", name, e);
+                format!("Error invoking tool {}: {}", name, e)
+            }
+        }
     }
 }
 

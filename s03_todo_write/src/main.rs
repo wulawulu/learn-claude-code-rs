@@ -93,37 +93,13 @@ impl LoopState {
         let mut used_todo = false;
         for block in content {
             if let ContentBlock::ToolUse { id, name, input } = block {
-                let Some(tool) = self.tools.get_mut(name) else {
-                    result.push(ContentBlock::ToolResult {
-                        tool_use_id: id.clone(),
-                        content: format!("Unknown tool: {}", name),
-                    });
-                    continue;
-                };
-
-                match tool.invoke(input).await {
-                    Ok(output) => {
-                        println!(
-                            "Command:{}\n arg:{}\n output:\n{}\n",
-                            name,
-                            input,
-                            output.chars().take(200).collect::<String>()
-                        );
-                        result.push(ContentBlock::ToolResult {
-                            tool_use_id: id.clone(),
-                            content: output,
-                        });
-                        if name == "todo" {
-                            used_todo = true;
-                        }
-                    }
-                    Err(e) => {
-                        println!("Error invoking tool {}: {}", name, e);
-                        result.push(ContentBlock::ToolResult {
-                            tool_use_id: id.clone(),
-                            content: format!("Error invoking tool {}: {}", name, e),
-                        });
-                    }
+                let output = self.execute(name, input).await;
+                result.push(ContentBlock::ToolResult {
+                    tool_use_id: id.clone(),
+                    content: output,
+                });
+                if name == "todo" {
+                    used_todo = true;
                 }
             }
         }
@@ -148,6 +124,28 @@ impl LoopState {
 
     pub fn note_round_without_update(&mut self) {
         self.todo_rounds_since_update += 1;
+    }
+
+    async fn execute(&mut self, name: &str, input: &serde_json::Value) -> String {
+        let Some(tool) = self.tools.get_mut(name) else {
+            return format!("Unknown tool: {name}");
+        };
+
+        match tool.invoke(input).await {
+            Ok(output) => {
+                println!(
+                    "Command:{}\n arg:{}\n output:\n{}\n",
+                    name,
+                    input,
+                    output.chars().take(200).collect::<String>()
+                );
+                output
+            }
+            Err(e) => {
+                println!("Error invoking tool {}: {}", name, e);
+                format!("Error invoking tool {}: {}", name, e)
+            }
+        }
     }
 }
 
