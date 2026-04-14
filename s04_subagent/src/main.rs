@@ -6,6 +6,7 @@ use anthropic_ai_sdk::types::message::{
     StopReason,
 };
 use anyhow::{Context, Result};
+use inquire::Text;
 
 use s04_subagent::{
     LoopState, MODEL, extract_text, get_llm_client,
@@ -27,12 +28,9 @@ async fn main() -> anyhow::Result<()> {
     let mut state = LoopState::new(client.clone(), tools);
 
     loop {
-        println!("--- How can I help you?");
-        //get user input
-        let mut query = String::new();
-        std::io::stdin()
-            .read_line(&mut query)
-            .context("Failed to read user input")?;
+        let query = Text::new("--- How can I help you?")
+            .prompt()
+            .context("An error happened or user cancelled the input.")?;
 
         //break out of the loop if the user enters exit()
         if query.trim() == "exit()" {
