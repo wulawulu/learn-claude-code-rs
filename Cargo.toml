@@ -1,5 +1,5 @@
 [workspace]
-members = ["s01_agent_loop", "s02_tool_use", "s03_todo_write", "s04_subagent", "s05_skill_loading", "s06_context_compact", "s07_permission_system"]
+members = ["s01_agent_loop", "s02_tool_use", "s03_todo_write", "s04_subagent", "s05_skill_loading", "s06_context_compact", "s07_permission_system", "s08_hook_system"]
 resolver = "3"
 
 [workspace.package]
@@ -20,5 +20,5 @@ serde_yaml = "0.9.34"
 tokio = { version = "1.51.1", features = ["rt-multi-thread", "macros", "rt"] }
 walkdir = "2.5.0"
 wildmatch = "2.5.0"
-strum = "0.27.2"
-strum_macros = "0.27.2"
+strum = "0.28.0"
+strum_macros = "0.28.0"
