@@ -1,5 +1,15 @@
 [workspace]
-members = ["s01_agent_loop", "s02_tool_use", "s03_todo_write", "s04_subagent", "s05_skill_loading", "s06_context_compact", "s07_permission_system", "s08_hook_system"]
+members = [
+    "s01_agent_loop",
+    "s02_tool_use",
+    "s03_todo_write",
+    "s04_subagent",
+    "s05_skill_loading",
+    "s06_context_compact",
+    "s07_permission_system",
+    "s08_hook_system",
+    "s09_memory_system",
+]
 resolver = "3"
 
 [workspace.package]
