@@ -9,6 +9,7 @@ members = [
     "s07_permission_system",
     "s08_hook_system",
     "s09_memory_system",
+    "s10_system_prompt",
 ]
 resolver = "3"
 
@@ -21,14 +22,17 @@ license = "MIT"
 anthropic-ai-sdk = "0.2.27"
 anyhow = "1.0.102"
 async-trait = "0.1.89"
+derive_builder = "0.20.2"
 dotenvy = "0.15.7"
+chrono = "0.4.44"
 inquire = "0.9.4"
 regex = "1.12.2"
 serde = "1.0.228"
 serde_json = "1.0.149"
 serde_yaml = "0.9.34"
+strum = "0.28.0"
+strum_macros = "0.28.0"
+tera = "1.20.1"
 tokio = { version = "1.51.1", features = ["rt-multi-thread", "macros", "rt"] }
 walkdir = "2.5.0"
 wildmatch = "2.5.0"
-strum = "0.28.0"
-strum_macros = "0.28.0"
