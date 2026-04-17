@@ -9,7 +9,7 @@ members = [
     "s07_permission_system",
     "s08_hook_system",
     "s09_memory_system",
-    "s10_system_prompt",
+    "s10_system_prompt", "s11_error_recovery",
 ]
 resolver = "3"
 
