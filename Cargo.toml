@@ -11,7 +11,11 @@ members = [
     "s09_memory_system",
     "s10_system_prompt",
     "s11_error_recovery",
-    "s12_task_system", "s13_background_tasks", "s14_cron_scheduler", "s15_agent_teams",
+    "s12_task_system",
+    "s13_background_tasks",
+    "s14_cron_scheduler",
+    "s15_agent_teams",
+    "s16_team_protocols",
 ]
 resolver = "3"
 
