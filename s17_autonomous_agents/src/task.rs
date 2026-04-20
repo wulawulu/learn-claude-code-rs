@@ -6,6 +6,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use strum::EnumProperty;
 use strum_macros::{Display, EnumProperty as EnumPropertyDerive, EnumString};
 
@@ -40,6 +41,14 @@ impl TaskStatus {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, EnumString, Display)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum ClaimSource {
+    Manual,
+    Auto,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskRecord {
     pub id: u64,
@@ -53,6 +62,22 @@ pub struct TaskRecord {
     pub blocks: Vec<u64>,
     #[serde(default)]
     pub owner: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub claimed_at: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub claim_source: Option<ClaimSource>,
+    #[serde(
+        rename = "claim_role",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub claim_role: Option<String>,
+    #[serde(
+        rename = "required_role",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub required_role: Option<String>,
 }
 
 impl TaskRecord {
@@ -65,7 +90,32 @@ impl TaskRecord {
             blocked_by: Vec::new(),
             blocks: Vec::new(),
             owner: String::new(),
+            claimed_at: None,
+            claim_source: None,
+            claim_role: None,
+            required_role: None,
         }
+    }
+
+    pub fn claim_role(&self) -> Option<&str> {
+        self.claim_role
+            .as_deref()
+            .or(self.required_role.as_deref())
+            .filter(|value| !value.is_empty())
+    }
+
+    pub fn allows_role(&self, role: Option<&str>) -> bool {
+        match self.claim_role() {
+            Some(required_role) => role.is_some_and(|role| role == required_role),
+            None => true,
+        }
+    }
+
+    pub fn is_claimable(&self, role: Option<&str>) -> bool {
+        self.status == TaskStatus::Pending
+            && self.owner.is_empty()
+            && self.blocked_by.is_empty()
+            && self.allows_role(role)
     }
 }
 
@@ -103,6 +153,10 @@ impl TaskManager {
     pub fn get(&self, task_id: u64) -> Result<String> {
         let task = self.load(task_id)?;
         self.render_json(&task)
+    }
+
+    pub fn get_record(&self, task_id: u64) -> Result<TaskRecord> {
+        self.load(task_id)
     }
 
     pub fn update(&mut self, task_id: u64, update: TaskUpdate) -> Result<String> {
@@ -162,18 +216,55 @@ impl TaskManager {
                 } else {
                     format!(" owner={}", task.owner)
                 };
+                let claim_role = task
+                    .claim_role()
+                    .map(|role| format!(" role={role}"))
+                    .unwrap_or_default();
                 format!(
-                    "{} #{}: {}{}{}",
+                    "{} #{}: {}{}{}{}",
                     task.status.marker(),
                     task.id,
                     task.subject,
                     owner,
+                    claim_role,
                     blocked
                 )
             })
             .collect::<Vec<_>>();
 
         Ok(lines.join("\n"))
+    }
+
+    pub fn scan_unclaimed(&self, role: Option<&str>) -> Result<Vec<TaskRecord>> {
+        let mut tasks = self.load_all()?;
+        tasks.sort_by_key(|task| task.id);
+        tasks.retain(|task| task.is_claimable(role));
+        Ok(tasks)
+    }
+
+    pub fn claim(
+        &mut self,
+        task_id: u64,
+        owner: &str,
+        role: Option<&str>,
+        source: ClaimSource,
+    ) -> Result<String> {
+        let mut task = self.load(task_id)?;
+        if !task.is_claimable(role) {
+            let role = role.unwrap_or("(any)");
+            return Ok(format!(
+                "Error: Task {task_id} is not claimable for role={role}"
+            ));
+        }
+
+        task.owner = owner.to_string();
+        task.status = TaskStatus::InProgress;
+        task.claimed_at = Some(crate::team::unix_timestamp());
+        task.claim_source = Some(source);
+        self.save(&task)?;
+        self.append_claim_event(task_id, owner, role, source)?;
+
+        Ok(format!("Claimed task #{task_id} for {owner} via {source}"))
     }
 
     fn max_task_id(dir: &Path) -> Result<u64> {
@@ -243,6 +334,32 @@ impl TaskManager {
         Ok(())
     }
 
+    fn append_claim_event(
+        &self,
+        task_id: u64,
+        owner: &str,
+        role: Option<&str>,
+        source: ClaimSource,
+    ) -> Result<()> {
+        let path = self.dir.join("claim_events.jsonl");
+        let mut content = if path.exists() {
+            fs::read_to_string(&path)
+                .with_context(|| format!("failed to read {}", path.display()))?
+        } else {
+            String::new()
+        };
+        content.push_str(&serde_json::to_string(&json!({
+            "event": "task.claimed",
+            "task_id": task_id,
+            "owner": owner,
+            "role": role,
+            "source": source,
+            "ts": crate::team::unix_timestamp(),
+        }))?);
+        content.push('\n');
+        fs::write(&path, content).with_context(|| format!("failed to write {}", path.display()))
+    }
+
     fn clear_dependency(&self, completed_id: u64) -> Result<()> {
         for mut task in self.load_all()? {
             if task.blocked_by.contains(&completed_id) {
@@ -282,12 +399,30 @@ impl SharedTaskManager {
         self.with_manager(|manager| manager.get(task_id))
     }
 
+    pub fn get_record(&self, task_id: u64) -> Result<TaskRecord> {
+        self.with_manager(|manager| manager.get_record(task_id))
+    }
+
     pub fn update(&self, task_id: u64, update: TaskUpdate) -> Result<String> {
         self.with_manager(|manager| manager.update(task_id, update))
     }
 
     pub fn list_all(&self) -> Result<String> {
         self.with_manager(|manager| manager.list_all())
+    }
+
+    pub fn scan_unclaimed(&self, role: Option<&str>) -> Result<Vec<TaskRecord>> {
+        self.with_manager(|manager| manager.scan_unclaimed(role))
+    }
+
+    pub fn claim(
+        &self,
+        task_id: u64,
+        owner: &str,
+        role: Option<&str>,
+        source: ClaimSource,
+    ) -> Result<String> {
+        self.with_manager(|manager| manager.claim(task_id, owner, role, source))
     }
 
     fn with_manager<T>(&self, callback: impl FnOnce(&mut TaskManager) -> Result<T>) -> Result<T> {

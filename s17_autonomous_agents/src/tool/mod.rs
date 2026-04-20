@@ -10,6 +10,7 @@ use serde_json::Value;
 mod bash;
 mod broadcast;
 mod edit_file;
+mod idle;
 mod list_teammates;
 mod plan_approval;
 mod read_file;
@@ -18,6 +19,7 @@ mod send_message;
 mod shutdown_request;
 mod shutdown_response;
 mod spawn_teammate;
+mod task_claim;
 mod task_create;
 mod task_get;
 mod task_list;
@@ -27,6 +29,7 @@ mod write_file;
 use bash::bash_tool;
 use broadcast::broadcast_tool;
 use edit_file::edit_file_tool;
+use idle::idle_tool;
 use list_teammates::list_teammates_tool;
 use plan_approval::{plan_approval_review_tool, plan_approval_submit_tool};
 use read_file::read_file_tool;
@@ -35,6 +38,7 @@ use send_message::send_message_tool;
 use shutdown_request::shutdown_request_tool;
 use shutdown_response::{shutdown_response_status_tool, shutdown_response_tool};
 use spawn_teammate::spawn_teammate_tool;
+use task_claim::task_claim_tool;
 use task_create::task_create_tool;
 use task_get::task_get_tool;
 use task_list::task_list_tool;
@@ -52,6 +56,7 @@ pub fn leader_tools(
             broadcast_tool(manager.clone(), "lead"),
         ),
         ("edit_file".to_string(), edit_file_tool()),
+        ("idle".to_string(), idle_tool("Lead does not idle.")),
         (
             "list_teammates".to_string(),
             list_teammates_tool(manager.clone()),
@@ -81,6 +86,10 @@ pub fn leader_tools(
             "plan_approval".to_string(),
             plan_approval_review_tool(manager),
         ),
+        (
+            "claim_task".to_string(),
+            task_claim_tool(tasks.clone(), "lead", None),
+        ),
         ("task_create".to_string(), task_create_tool(tasks.clone())),
         ("task_get".to_string(), task_get_tool(tasks.clone())),
         ("task_list".to_string(), task_list_tool(tasks.clone())),
@@ -90,24 +99,32 @@ pub fn leader_tools(
 }
 
 pub struct TeammateToolsInput {
-    pub manager: SharedTeammateManager,
+    pub tasks: SharedTaskManager,
     pub sender_name: String,
+    pub role: String,
+    pub manager: SharedTeammateManager,
 }
 
 pub fn teammate_tools_input(
     manager: SharedTeammateManager,
+    tasks: SharedTaskManager,
     sender_name: impl Into<String>,
+    role: impl Into<String>,
 ) -> TeammateToolsInput {
     TeammateToolsInput {
+        tasks,
         manager,
         sender_name: sender_name.into(),
+        role: role.into(),
     }
 }
 
 pub fn teammate_tools(input: TeammateToolsInput) -> HashMap<String, Box<dyn Tool>> {
     let TeammateToolsInput {
+        tasks,
         manager,
         sender_name,
+        role,
     } = input;
 
     HashMap::from([
@@ -129,7 +146,15 @@ pub fn teammate_tools(input: TeammateToolsInput) -> HashMap<String, Box<dyn Tool
         ),
         (
             "plan_approval".to_string(),
-            plan_approval_submit_tool(manager, sender_name),
+            plan_approval_submit_tool(manager, sender_name.clone()),
+        ),
+        (
+            "claim_task".to_string(),
+            task_claim_tool(tasks, sender_name, Some(role)),
+        ),
+        (
+            "idle".to_string(),
+            idle_tool("Entering idle phase. Will poll for new tasks."),
         ),
     ])
 }

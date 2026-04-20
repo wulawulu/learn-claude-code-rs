@@ -12,17 +12,16 @@ use s17_autonomous_agents::{
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let client = get_llm_client()?;
+    let tasks = SharedTaskManager::new(std::env::current_dir()?.join(".tasks"))?;
     let team_dir = std::env::current_dir()?.join(TEAM_DIR_NAME);
-    let manager = SharedTeammateManager::new(&team_dir)?;
+    let manager = SharedTeammateManager::new(&team_dir, tasks.clone())?;
     manager.register_mailbox("lead");
     let system_prompt = format!(
-        "You are a team lead at {}. Manage teammates with shutdown and plan approval protocols.",
+        "You are a team lead at {}. Teammates are autonomous: they can idle, poll inboxes, and auto-claim ready tasks that match their role while still using shutdown and plan approval protocols.",
         std::env::current_dir()?.display()
     );
 
-    let tasks = SharedTaskManager::new(std::env::current_dir()?.join(".tasks"))?;
-
-    let tools = leader_tools(manager.clone(), tasks);
+    let tools = leader_tools(manager.clone(), tasks.clone());
 
     let mut state: LoopState = LoopState::new(
         client,
@@ -55,9 +54,14 @@ async fn main() -> anyhow::Result<()> {
             continue;
         }
 
+        if query.trim() == "/tasks" {
+            println!("{}", tasks.list_all()?);
+            continue;
+        }
+
         state.context.push(Message::new_text(User, query));
 
-        state.agent_loop().await?;
+        let _ = state.agent_loop().await?;
 
         let Some(final_content) = state.context.last() else {
             continue;
