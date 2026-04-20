@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anthropic_ai_sdk::types::message::{
     CreateMessageParams, Message, MessageClient, RequiredMessageParams,
     Role::{self, User},
@@ -12,7 +10,7 @@ use s06_context_compact::{
     LoopState, MODEL,
     compact::{estimate_context_size, micro_compact},
     extract_text, get_llm_client,
-    tool::{bash_tool, compact_tool, edit_file_tool, read_file_tool, write_file_tool},
+    tool::toolset,
 };
 
 const CONTEXT_LIMIT: usize = 50000;
@@ -21,13 +19,7 @@ const CONTEXT_LIMIT: usize = 50000;
 async fn main() -> anyhow::Result<()> {
     let client = get_llm_client()?;
 
-    let tools = HashMap::from([
-        ("bash".to_string(), bash_tool()),
-        ("compact".to_string(), compact_tool()),
-        ("edit_file".to_string(), edit_file_tool()),
-        ("read_file".to_string(), read_file_tool()),
-        ("write_file".to_string(), write_file_tool()),
-    ]);
+    let tools = toolset();
 
     let mut state = LoopState::new(client.clone(), tools);
 

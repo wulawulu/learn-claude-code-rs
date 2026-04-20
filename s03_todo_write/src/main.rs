@@ -12,7 +12,7 @@ use anthropic_ai_sdk::{
 use anyhow::{Context, Result};
 use inquire::Text;
 
-use s03_todo_write::tool::{Tool, bash_tool, edit_file_tool, read_file_tool, write_file_tool};
+use s03_todo_write::tool::{Tool, toolset};
 
 const MODEL: &str = "deepseek-chat";
 const SYSTEM: &str = r#"You are a coding agent.
@@ -36,13 +36,7 @@ async fn main() -> anyhow::Result<()> {
         .build::<MessageError>()
         .context("can't create client")?;
 
-    let tools = HashMap::from([
-        ("bash".to_string(), bash_tool()),
-        ("read_file".to_string(), read_file_tool()),
-        ("write_file".to_string(), write_file_tool()),
-        ("edit_file".to_string(), edit_file_tool()),
-        ("todo".to_string(), s03_todo_write::tool::todo_tool()),
-    ]);
+    let tools = toolset();
 
     let mut state = LoopState::new(client.clone(), tools);
 

@@ -1,16 +1,11 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use anthropic_ai_sdk::types::message::{Message, Role::User};
 use anyhow::Context;
 
 use inquire::Text;
 use s09_memory_system::{
-    LoopState, extract_text, get_llm_client,
-    memory::get_memory_manager,
-    tool::{bash_tool, edit_file_tool, read_file_tool, save_memory_tool, write_file_tool},
+    LoopState, extract_text, get_llm_client, memory::get_memory_manager, tool::toolset,
 };
 
 #[tokio::main]
@@ -20,16 +15,7 @@ async fn main() -> anyhow::Result<()> {
         std::env::current_dir()?.join(".memory"),
     )?));
 
-    let tools = HashMap::from([
-        ("bash".to_string(), bash_tool()),
-        ("edit_file".to_string(), edit_file_tool()),
-        ("read_file".to_string(), read_file_tool()),
-        (
-            "save_memory".to_string(),
-            save_memory_tool(memory_manager.clone()),
-        ),
-        ("write_file".to_string(), write_file_tool()),
-    ]);
+    let tools = toolset(memory_manager.clone());
 
     let mut state: LoopState = LoopState::new(client.clone(), tools, memory_manager.clone());
     loop {

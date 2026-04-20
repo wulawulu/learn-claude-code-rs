@@ -1,6 +1,9 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use crate::ToolSpec;
+use crate::{memory::MemoryManager, skill::SkillRegistry};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde_json::Value;
@@ -11,12 +14,26 @@ mod load_skill;
 mod memory;
 mod read_file;
 mod write_file;
-pub use bash::{BashTool, bash_tool};
-pub use edit_file::{EditFileTool, edit_file_tool};
-pub use load_skill::{LoadSkillTool, load_skill_tool};
-pub use memory::{SaveMemoryTool, save_memory_tool};
-pub use read_file::{ReadFileTool, read_file_tool};
-pub use write_file::{WriteFileTool, write_file_tool};
+use bash::bash_tool;
+use edit_file::edit_file_tool;
+use load_skill::load_skill_tool;
+use memory::save_memory_tool;
+use read_file::read_file_tool;
+use write_file::write_file_tool;
+
+pub fn toolset(
+    skill_registry: Arc<SkillRegistry>,
+    memory_manager: Arc<Mutex<MemoryManager>>,
+) -> HashMap<String, Box<dyn Tool>> {
+    HashMap::from([
+        ("bash".to_string(), bash_tool()),
+        ("edit_file".to_string(), edit_file_tool()),
+        ("load_skill".to_string(), load_skill_tool(skill_registry)),
+        ("read_file".to_string(), read_file_tool()),
+        ("save_memory".to_string(), save_memory_tool(memory_manager)),
+        ("write_file".to_string(), write_file_tool()),
+    ])
+}
 
 #[async_trait]
 pub trait Tool: Send + Sync {

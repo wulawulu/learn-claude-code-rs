@@ -1,24 +1,14 @@
-use std::collections::HashMap;
-
 use anthropic_ai_sdk::types::message::{Message, Role::User};
 use anyhow::Context;
 use inquire::Text;
 
-use s11_error_recovery::{
-    LoopState, extract_text, get_llm_client,
-    tool::{bash_tool, edit_file_tool, read_file_tool, write_file_tool},
-};
+use s11_error_recovery::{LoopState, extract_text, get_llm_client, tool::toolset};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let client = get_llm_client()?;
 
-    let tools = HashMap::from([
-        ("bash".to_string(), bash_tool()),
-        ("edit_file".to_string(), edit_file_tool()),
-        ("read_file".to_string(), read_file_tool()),
-        ("write_file".to_string(), write_file_tool()),
-    ]);
+    let tools = toolset();
 
     let mut state = LoopState::new(client.clone(), tools);
 

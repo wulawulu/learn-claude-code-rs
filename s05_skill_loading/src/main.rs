@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use anthropic_ai_sdk::types::message::{
     CreateMessageParams, Message, MessageClient, RequiredMessageParams,
@@ -9,9 +9,7 @@ use anyhow::{Context, Result};
 use inquire::Text;
 
 use s05_skill_loading::{
-    LoopState, MODEL, extract_text, get_llm_client,
-    skill::get_skill_registry,
-    tool::{bash_tool, edit_file_tool, load_skill_tool, read_file_tool, write_file_tool},
+    LoopState, MODEL, extract_text, get_llm_client, skill::get_skill_registry, tool::toolset,
 };
 
 const SKILLS_DIR: &str = "skills";
@@ -23,16 +21,7 @@ async fn main() -> anyhow::Result<()> {
     let skills_dir = std::env::current_dir()?.join(SKILLS_DIR);
     let skill_registry = Arc::new(get_skill_registry(skills_dir)?);
 
-    let tools = HashMap::from([
-        ("bash".to_string(), bash_tool()),
-        ("read_file".to_string(), read_file_tool()),
-        ("write_file".to_string(), write_file_tool()),
-        ("edit_file".to_string(), edit_file_tool()),
-        (
-            "load_skill".to_string(),
-            load_skill_tool(skill_registry.clone()),
-        ),
-    ]);
+    let tools = toolset(skill_registry.clone());
 
     let mut state = LoopState::new(client.clone(), tools, skill_registry.clone());
 

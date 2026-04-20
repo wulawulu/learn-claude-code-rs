@@ -1,6 +1,8 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 
 use crate::ToolSpec;
+use crate::task::SharedTaskManager;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde_json::Value;
@@ -13,14 +15,27 @@ mod task_get;
 mod task_list;
 mod task_update;
 mod write_file;
-pub use bash::{BashTool, bash_tool};
-pub use edit_file::{EditFileTool, edit_file_tool};
-pub use read_file::{ReadFileTool, read_file_tool};
-pub use task_create::{TaskCreateTool, task_create_tool};
-pub use task_get::{TaskGetTool, task_get_tool};
-pub use task_list::{TaskListTool, task_list_tool};
-pub use task_update::{TaskUpdateTool, task_update_tool};
-pub use write_file::{WriteFileTool, write_file_tool};
+use bash::bash_tool;
+use edit_file::edit_file_tool;
+use read_file::read_file_tool;
+use task_create::task_create_tool;
+use task_get::task_get_tool;
+use task_list::task_list_tool;
+use task_update::task_update_tool;
+use write_file::write_file_tool;
+
+pub fn toolset(tasks: SharedTaskManager) -> HashMap<String, Box<dyn Tool>> {
+    HashMap::from([
+        ("bash".to_string(), bash_tool()),
+        ("edit_file".to_string(), edit_file_tool()),
+        ("read_file".to_string(), read_file_tool()),
+        ("task_create".to_string(), task_create_tool(tasks.clone())),
+        ("task_get".to_string(), task_get_tool(tasks.clone())),
+        ("task_list".to_string(), task_list_tool(tasks.clone())),
+        ("task_update".to_string(), task_update_tool(tasks)),
+        ("write_file".to_string(), write_file_tool()),
+    ])
+}
 
 #[async_trait]
 pub trait Tool: Send + Sync {

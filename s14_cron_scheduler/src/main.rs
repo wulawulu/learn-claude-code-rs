@@ -1,17 +1,9 @@
-use std::collections::HashMap;
-
 use anthropic_ai_sdk::types::message::{Message, Role::User};
 use anyhow::Context;
 
 use inquire::Text;
 use s14_cron_scheduler::{
-    LoopState,
-    cron::SharedCronScheduler,
-    extract_text, get_llm_client,
-    tool::{
-        bash_tool, cron_create_tool, cron_delete_tool, cron_list_tool, edit_file_tool,
-        read_file_tool, write_file_tool,
-    },
+    LoopState, cron::SharedCronScheduler, extract_text, get_llm_client, tool::toolset,
 };
 
 #[tokio::main]
@@ -26,21 +18,7 @@ async fn main() -> anyhow::Result<()> {
         println!("[Cron] Loaded {loaded} scheduled tasks");
     }
 
-    let tools = HashMap::from([
-        ("bash".to_string(), bash_tool()),
-        (
-            "cron_create".to_string(),
-            cron_create_tool(scheduler.clone()),
-        ),
-        (
-            "cron_delete".to_string(),
-            cron_delete_tool(scheduler.clone()),
-        ),
-        ("cron_list".to_string(), cron_list_tool(scheduler.clone())),
-        ("edit_file".to_string(), edit_file_tool()),
-        ("read_file".to_string(), read_file_tool()),
-        ("write_file".to_string(), write_file_tool()),
-    ]);
+    let tools = toolset(scheduler.clone());
 
     let mut state: LoopState = LoopState::new(client.clone(), tools, scheduler.clone());
     loop {

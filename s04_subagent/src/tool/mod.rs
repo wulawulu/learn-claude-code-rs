@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 
 use crate::ToolSpec;
 use anyhow::{Context, Result};
@@ -10,11 +11,30 @@ mod edit_file;
 mod read_file;
 mod sub_agent;
 mod write_file;
-pub use bash::{BashTool, bash_tool};
-pub use edit_file::{EditFileTool, edit_file_tool};
-pub use read_file::{ReadFileTool, read_file_tool};
-pub use sub_agent::{SubAgentTool, sub_agent_tool};
-pub use write_file::{WriteFileTool, write_file_tool};
+use bash::bash_tool;
+use edit_file::edit_file_tool;
+use read_file::read_file_tool;
+use sub_agent::sub_agent_tool;
+use write_file::write_file_tool;
+
+pub fn agent_tools() -> HashMap<String, Box<dyn Tool>> {
+    HashMap::from([
+        ("bash".to_string(), bash_tool()),
+        ("read_file".to_string(), read_file_tool()),
+        ("write_file".to_string(), write_file_tool()),
+        ("edit_file".to_string(), edit_file_tool()),
+        ("task".to_string(), sub_agent_tool()),
+    ])
+}
+
+pub fn subagent_tools() -> HashMap<String, Box<dyn Tool>> {
+    HashMap::from([
+        ("bash".to_string(), bash_tool()),
+        ("read_file".to_string(), read_file_tool()),
+        ("write_file".to_string(), write_file_tool()),
+        ("edit_file".to_string(), edit_file_tool()),
+    ])
+}
 
 #[async_trait]
 pub trait Tool: Send + Sync {

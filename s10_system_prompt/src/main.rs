@@ -1,20 +1,12 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use anthropic_ai_sdk::types::message::{Message, Role::User};
 use anyhow::{Context, Ok};
 
 use inquire::Text;
 use s10_system_prompt::{
-    LoopState, extract_text, get_llm_client,
-    memory::get_memory_manager,
-    skill::get_skill_registry,
-    tool::{
-        bash_tool, edit_file_tool, load_skill_tool, read_file_tool, save_memory_tool,
-        write_file_tool,
-    },
+    LoopState, extract_text, get_llm_client, memory::get_memory_manager, skill::get_skill_registry,
+    tool::toolset,
 };
 const SKILLS_DIR: &str = "skills";
 const MEMORY_DIR: &str = ".memory";
@@ -28,20 +20,7 @@ async fn main() -> anyhow::Result<()> {
     let memory_manager = Arc::new(Mutex::new(get_memory_manager(
         std::env::current_dir()?.join(MEMORY_DIR),
     )?));
-    let tools = HashMap::from([
-        ("bash".to_string(), bash_tool()),
-        ("edit_file".to_string(), edit_file_tool()),
-        (
-            "load_skill".to_string(),
-            load_skill_tool(skill_registry.clone()),
-        ),
-        ("read_file".to_string(), read_file_tool()),
-        (
-            "save_memory".to_string(),
-            save_memory_tool(memory_manager.clone()),
-        ),
-        ("write_file".to_string(), write_file_tool()),
-    ]);
+    let tools = toolset(skill_registry.clone(), memory_manager.clone());
 
     let mut state = LoopState::new(
         client.clone(),
