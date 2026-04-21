@@ -1,19 +1,8 @@
-use anthropic_ai_sdk::types::message::{
-    CreateMessageParams, Message, MessageClient, RequiredMessageParams,
-    Role::{self, User},
-    StopReason,
-};
-use anyhow::{Context, Result};
+use anthropic_ai_sdk::types::message::{Message, Role::User};
+use anyhow::Context;
 use inquire::Text;
 
-use s06_context_compact::{
-    LoopState, MODEL,
-    compact::{estimate_context_size, micro_compact},
-    extract_text, get_llm_client,
-    tool::toolset,
-};
-
-const CONTEXT_LIMIT: usize = 50000;
+use s06_context_compact::{LoopState, extract_text, get_llm_client, tool::toolset};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -34,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
         }
         state.context.push(Message::new_text(User, query));
 
-        agent_loop(&mut state).await?;
+        state.agent_loop().await?;
 
         let Some(final_content) = state.context.last() else {
             continue;
@@ -46,44 +35,4 @@ async fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
-}
-
-async fn agent_loop(state: &mut LoopState) -> Result<()> {
-    let system = format!(
-        r#"You are a coding agent at {}.
-Keep working step by step, and use compact if the conversation gets too long.
-"#,
-        std::env::current_dir()?.display(),
-    );
-    loop {
-        micro_compact(&mut state.context);
-
-        if estimate_context_size(&state.context) > CONTEXT_LIMIT {
-            println!("[auto compact]");
-            state.compact_history(None).await?;
-        }
-
-        let request = CreateMessageParams::new(RequiredMessageParams {
-            model: MODEL.to_string(),
-            messages: state.context.clone(),
-            max_tokens: 8000,
-        })
-        .with_system(&system)
-        .with_tools(state.tools.values().map(|tool| tool.tool_spec()).collect());
-
-        let response = state.client.create_message(Some(&request)).await?;
-
-        state.context.push(Message::new_blocks(
-            Role::Assistant,
-            response.content.clone(),
-        ));
-
-        if let Some(stop_reason) = response.stop_reason
-            && !matches!(stop_reason, StopReason::ToolUse)
-        {
-            return Ok(());
-        }
-
-        state.execute_tool_call(&response.content).await?;
-    }
 }

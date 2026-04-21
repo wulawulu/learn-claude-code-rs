@@ -1,15 +1,11 @@
 use std::sync::Arc;
 
-use anthropic_ai_sdk::types::message::{
-    CreateMessageParams, Message, MessageClient, RequiredMessageParams,
-    Role::{self, User},
-    StopReason,
-};
-use anyhow::{Context, Result};
+use anthropic_ai_sdk::types::message::{Message, Role::User};
+use anyhow::Context;
 use inquire::Text;
 
 use s05_skill_loading::{
-    LoopState, MODEL, extract_text, get_llm_client, skill::get_skill_registry, tool::toolset,
+    LoopState, extract_text, get_llm_client, skill::get_skill_registry, tool::toolset,
 };
 
 const SKILLS_DIR: &str = "skills";
@@ -36,7 +32,7 @@ async fn main() -> anyhow::Result<()> {
         }
         state.context.push(Message::new_text(User, query));
 
-        agent_loop(&mut state).await?;
+        state.agent_loop().await?;
 
         let Some(final_content) = state.context.last() else {
             continue;
@@ -48,45 +44,4 @@ async fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
-}
-
-async fn agent_loop(state: &mut LoopState) -> Result<()> {
-    let system = format!(
-        r#"You are a coding agent at {}.
-Use load_skill when a task needs specialized instructions before you act.
-
-Skills available:
-    {}
-"#,
-        std::env::current_dir()?.display(),
-        state.skill_registry.describe_available()
-    );
-    loop {
-        let request = CreateMessageParams::new(RequiredMessageParams {
-            model: MODEL.to_string(),
-            messages: state.context.clone(),
-            max_tokens: 8000,
-        })
-        .with_system(&system)
-        .with_tools(state.tools.values().map(|tool| tool.tool_spec()).collect());
-
-        let response = state.client.create_message(Some(&request)).await?;
-
-        state.context.push(Message::new_blocks(
-            Role::Assistant,
-            response.content.clone(),
-        ));
-
-        if let Some(stop_reason) = response.stop_reason
-            && !matches!(stop_reason, StopReason::ToolUse)
-        {
-            return Ok(());
-        }
-
-        let tool_result = state.execute_tool_call(&response.content).await;
-
-        state
-            .context
-            .push(Message::new_blocks(Role::User, tool_result));
-    }
 }

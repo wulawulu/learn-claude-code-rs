@@ -6,9 +6,12 @@ use std::collections::HashMap;
 
 use anthropic_ai_sdk::{
     client::{AnthropicClient, AnthropicClientBuilder},
-    types::message::{ContentBlock, Message, MessageContent, MessageError},
+    types::message::{
+        ContentBlock, CreateMessageParams, Message, MessageClient, MessageContent, MessageError,
+        RequiredMessageParams, Role, StopReason,
+    },
 };
-use anyhow::Context;
+use anyhow::{Context, Result};
 
 use crate::tool::Tool;
 
@@ -32,15 +35,56 @@ pub struct LoopState {
     pub client: AnthropicClient,
     pub context: Vec<Message>,
     pub tools: HashMap<String, Box<dyn Tool>>,
+    pub system_prompt: String,
+    pub max_round: usize,
 }
 
 impl LoopState {
-    pub fn new(client: AnthropicClient, tools: HashMap<String, Box<dyn Tool>>) -> Self {
+    pub fn new(
+        client: AnthropicClient,
+        tools: HashMap<String, Box<dyn Tool>>,
+        system_prompt: impl Into<String>,
+        max_round: usize,
+    ) -> Self {
         Self {
             client,
             context: Vec::new(),
             tools,
+            system_prompt: system_prompt.into(),
+            max_round,
         }
+    }
+
+    pub async fn agent_loop(&mut self) -> Result<()> {
+        for _ in 0..self.max_round {
+            let request = CreateMessageParams::new(RequiredMessageParams {
+                model: MODEL.to_string(),
+                messages: self.context.clone(),
+                max_tokens: 8000,
+            })
+            .with_system(&self.system_prompt)
+            .with_tools(self.tools.values().map(|tool| tool.tool_spec()).collect());
+
+            let response = self.client.create_message(Some(&request)).await?;
+
+            self.context.push(Message::new_blocks(
+                Role::Assistant,
+                response.content.clone(),
+            ));
+
+            if let Some(stop_reason) = response.stop_reason
+                && !matches!(stop_reason, StopReason::ToolUse)
+            {
+                return Ok(());
+            }
+
+            let tool_result = self.execute_tool_call(&response.content).await;
+
+            self.context
+                .push(Message::new_blocks(Role::User, tool_result));
+        }
+
+        Ok(())
     }
 
     pub async fn execute_tool_call(&mut self, content: &[ContentBlock]) -> Vec<ContentBlock> {

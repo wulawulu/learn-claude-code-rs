@@ -7,9 +7,12 @@ use std::{collections::HashMap, sync::Arc};
 
 use anthropic_ai_sdk::{
     client::{AnthropicClient, AnthropicClientBuilder},
-    types::message::{ContentBlock, Message, MessageContent, MessageError},
+    types::message::{
+        ContentBlock, CreateMessageParams, Message, MessageClient, MessageContent, MessageError,
+        RequiredMessageParams, Role, StopReason,
+    },
 };
-use anyhow::Context;
+use anyhow::{Context, Result};
 
 use crate::{skill::SkillRegistry, tool::Tool};
 
@@ -47,6 +50,46 @@ impl LoopState {
             context: Vec::new(),
             tools,
             skill_registry,
+        }
+    }
+
+    pub async fn agent_loop(&mut self) -> Result<()> {
+        let system = format!(
+            r#"You are a coding agent at {}.
+Use load_skill when a task needs specialized instructions before you act.
+
+Skills available:
+    {}
+"#,
+            std::env::current_dir()?.display(),
+            self.skill_registry.describe_available()
+        );
+        loop {
+            let request = CreateMessageParams::new(RequiredMessageParams {
+                model: MODEL.to_string(),
+                messages: self.context.clone(),
+                max_tokens: 8000,
+            })
+            .with_system(&system)
+            .with_tools(self.tools.values().map(|tool| tool.tool_spec()).collect());
+
+            let response = self.client.create_message(Some(&request)).await?;
+
+            self.context.push(Message::new_blocks(
+                Role::Assistant,
+                response.content.clone(),
+            ));
+
+            if let Some(stop_reason) = response.stop_reason
+                && !matches!(stop_reason, StopReason::ToolUse)
+            {
+                return Ok(());
+            }
+
+            let tool_result = self.execute_tool_call(&response.content).await;
+
+            self.context
+                .push(Message::new_blocks(Role::User, tool_result));
         }
     }
 

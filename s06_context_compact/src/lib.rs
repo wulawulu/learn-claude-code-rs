@@ -7,16 +7,20 @@ use std::collections::HashMap;
 
 use anthropic_ai_sdk::{
     client::{AnthropicClient, AnthropicClientBuilder},
-    types::message::{ContentBlock, Message, MessageContent, MessageError, Role},
+    types::message::{
+        ContentBlock, CreateMessageParams, Message, MessageClient, MessageContent, MessageError,
+        RequiredMessageParams, Role, StopReason,
+    },
 };
-use anyhow::Context;
+use anyhow::{Context, Result};
 
 use crate::{
-    compact::{CompactState, persist_large_output},
+    compact::{CompactState, estimate_context_size, micro_compact, persist_large_output},
     tool::Tool,
 };
 
 pub const MODEL: &str = "deepseek-chat";
+const CONTEXT_LIMIT: usize = 50000;
 
 pub fn get_llm_client() -> anyhow::Result<AnthropicClient> {
     dotenvy::dotenv().ok();
@@ -46,6 +50,46 @@ impl LoopState {
             context: Vec::new(),
             tools,
             compact_state: CompactState::default(),
+        }
+    }
+
+    pub async fn agent_loop(&mut self) -> Result<()> {
+        let system = format!(
+            r#"You are a coding agent at {}.
+Keep working step by step, and use compact if the conversation gets too long.
+"#,
+            std::env::current_dir()?.display(),
+        );
+        loop {
+            micro_compact(&mut self.context);
+
+            if estimate_context_size(&self.context) > CONTEXT_LIMIT {
+                println!("[auto compact]");
+                self.compact_history(None).await?;
+            }
+
+            let request = CreateMessageParams::new(RequiredMessageParams {
+                model: MODEL.to_string(),
+                messages: self.context.clone(),
+                max_tokens: 8000,
+            })
+            .with_system(&system)
+            .with_tools(self.tools.values().map(|tool| tool.tool_spec()).collect());
+
+            let response = self.client.create_message(Some(&request)).await?;
+
+            self.context.push(Message::new_blocks(
+                Role::Assistant,
+                response.content.clone(),
+            ));
+
+            if let Some(stop_reason) = response.stop_reason
+                && !matches!(stop_reason, StopReason::ToolUse)
+            {
+                return Ok(());
+            }
+
+            self.execute_tool_call(&response.content).await?;
         }
     }
 

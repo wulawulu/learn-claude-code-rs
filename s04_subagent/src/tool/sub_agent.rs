@@ -1,12 +1,10 @@
 use std::borrow::Cow;
 
 use crate::{
-    LoopState, MODEL, ToolSpec, extract_text, get_llm_client,
+    LoopState, ToolSpec, extract_text, get_llm_client,
     tool::{Tool, subagent_tools},
 };
-use anthropic_ai_sdk::types::message::{
-    CreateMessageParams, Message, MessageClient, RequiredMessageParams, Role, StopReason,
-};
+use anthropic_ai_sdk::types::message::{Message, Role};
 use anyhow::{Context as _, Result};
 use async_trait::async_trait;
 use serde_json::Value;
@@ -21,52 +19,25 @@ async fn sub_agent_loop(prompt: &str, description: Option<&str>) -> Result<Strin
     println!("> task - ({}): {}", description.unwrap_or_default(), prompt);
     let client = get_llm_client()?;
     let tools = subagent_tools();
-
-    let mut state = LoopState::new(client.clone(), tools);
-    state.context.push(Message::new_text(Role::User, prompt));
-
-    let mut last_summary = None;
-
-    let sub_system = format!(
+    let system_prompt = format!(
         "You are a coding subagent at {}. Complete the given task, then summarize your findings.",
         std::env::current_dir()?.display()
     );
-    for _ in 0..30 {
-        let request = CreateMessageParams::new(RequiredMessageParams {
-            model: MODEL.to_string(),
-            messages: state.context.clone(),
-            max_tokens: 8000,
-        })
-        .with_system(&sub_system)
-        .with_tools(state.tools.values().map(|tool| tool.tool_spec()).collect());
 
-        let response = state.client.create_message(Some(&request)).await?;
-        let response_text =
-            extract_text(&Message::new_blocks(Role::Assistant, response.content.clone()).content);
+    let mut state = LoopState::new(client, tools, system_prompt, 30);
+    state.context.push(Message::new_text(Role::User, prompt));
+    state.agent_loop().await?;
 
-        if !response_text.is_empty() {
-            last_summary = Some(response_text);
-        }
+    let summary = state
+        .context
+        .iter()
+        .rev()
+        .find(|message| matches!(message.role, Role::Assistant))
+        .map(|message| extract_text(&message.content))
+        .filter(|text| !text.is_empty())
+        .unwrap_or_else(|| "(no summary)".to_string());
 
-        state.context.push(Message::new_blocks(
-            Role::Assistant,
-            response.content.clone(),
-        ));
-
-        if let Some(stop_reason) = response.stop_reason
-            && !matches!(stop_reason, StopReason::ToolUse)
-        {
-            break;
-        }
-
-        let tool_result = state.execute_tool_call(&response.content).await;
-
-        state
-            .context
-            .push(Message::new_blocks(Role::User, tool_result));
-    }
-
-    Ok(last_summary.unwrap_or_else(|| "(no summary)".to_string()))
+    Ok(summary)
 }
 
 #[async_trait]
