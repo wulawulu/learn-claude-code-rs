@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::path::PathBuf;
 
 use crate::{
     ToolSpec,
@@ -9,10 +10,12 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokio::fs;
 
-pub struct WriteFileTool;
+pub struct WriteFileTool {
+    work_dir: PathBuf,
+}
 
-pub fn write_file_tool() -> Box<dyn Tool> {
-    Box::new(WriteFileTool {}) as Box<dyn Tool>
+pub fn write_file_tool(work_dir: PathBuf) -> Box<dyn Tool> {
+    Box::new(WriteFileTool { work_dir }) as Box<dyn Tool>
 }
 
 #[async_trait]
@@ -22,14 +25,13 @@ impl Tool for WriteFileTool {
             .get("path")
             .and_then(|v| v.as_str())
             .context("Invalid path")?;
-        let path = safe_path_allow_missing(path)?;
+        let path = safe_path_allow_missing(&self.work_dir, path)?;
 
         let content = input
             .get("content")
             .and_then(|v| v.as_str())
             .context("Invalid content")?;
 
-        // 创建父目录
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).await.ok();
         }
@@ -52,7 +54,7 @@ impl Tool for WriteFileTool {
     fn tool_spec(&self) -> ToolSpec {
         ToolSpec {
             name: "write_file".to_string(),
-            description: Some("Write content to file.".to_string()),
+            description: Some("Write content inside the current workspace scope.".to_string()),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {

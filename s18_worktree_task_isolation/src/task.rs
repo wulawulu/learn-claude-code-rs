@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use strum::EnumProperty;
 use strum_macros::{Display, EnumProperty as EnumPropertyDerive, EnumString};
 
+use crate::now_ts;
+
 #[derive(
     Debug,
     Clone,
@@ -40,6 +42,54 @@ impl TaskStatus {
     }
 }
 
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, EnumString, Display, Default,
+)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum WorktreeState {
+    #[default]
+    Unbound,
+    Active,
+    Kept,
+    Removed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, EnumString, Display)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum CloseoutAction {
+    Keep,
+    Remove,
+}
+
+impl CloseoutAction {
+    pub fn state(self) -> WorktreeState {
+        match self {
+            Self::Keep => WorktreeState::Kept,
+            Self::Remove => WorktreeState::Removed,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CloseoutRecord {
+    pub action: CloseoutAction,
+    #[serde(default)]
+    pub reason: String,
+    pub at: f64,
+}
+
+impl CloseoutRecord {
+    pub fn new(action: CloseoutAction, reason: impl Into<String>) -> Self {
+        Self {
+            action,
+            reason: reason.into(),
+            at: now_ts(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskRecord {
     pub id: u64,
@@ -53,10 +103,23 @@ pub struct TaskRecord {
     pub blocks: Vec<u64>,
     #[serde(default)]
     pub owner: String,
+    #[serde(default)]
+    pub worktree: String,
+    #[serde(default)]
+    pub worktree_state: WorktreeState,
+    #[serde(default)]
+    pub last_worktree: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub closeout: Option<CloseoutRecord>,
+    #[serde(default = "now_ts")]
+    pub created_at: f64,
+    #[serde(default = "now_ts")]
+    pub updated_at: f64,
 }
 
 impl TaskRecord {
     pub fn new(id: u64, subject: String, description: Option<String>) -> Self {
+        let now = now_ts();
         Self {
             id,
             subject,
@@ -65,6 +128,12 @@ impl TaskRecord {
             blocked_by: Vec::new(),
             blocks: Vec::new(),
             owner: String::new(),
+            worktree: String::new(),
+            worktree_state: WorktreeState::Unbound,
+            last_worktree: String::new(),
+            closeout: None,
+            created_at: now,
+            updated_at: now,
         }
     }
 }
@@ -105,6 +174,14 @@ impl TaskManager {
         self.render_json(&task)
     }
 
+    pub fn get_record(&self, task_id: u64) -> Result<TaskRecord> {
+        self.load(task_id)
+    }
+
+    pub fn exists(&self, task_id: u64) -> bool {
+        self.task_path(task_id).exists()
+    }
+
     pub fn update(&mut self, task_id: u64, update: TaskUpdate) -> Result<String> {
         let mut task = self.load(task_id)?;
 
@@ -131,6 +208,7 @@ impl TaskManager {
                 {
                     blocked.blocked_by.push(task_id);
                     blocked.blocked_by.sort_unstable();
+                    blocked.updated_at = now_ts();
                     self.save(&blocked)?;
                 }
             }
@@ -138,6 +216,59 @@ impl TaskManager {
 
         task.blocked_by.sort_unstable();
         task.blocks.sort_unstable();
+        task.updated_at = now_ts();
+        self.save(&task)?;
+        self.render_json(&task)
+    }
+
+    pub fn bind_worktree(
+        &mut self,
+        task_id: u64,
+        worktree: impl Into<String>,
+        owner: Option<String>,
+    ) -> Result<String> {
+        let mut task = self.load(task_id)?;
+        let worktree = worktree.into();
+
+        task.worktree = worktree.clone();
+        task.last_worktree = worktree;
+        task.worktree_state = WorktreeState::Active;
+        task.closeout = None;
+
+        if let Some(owner) = owner {
+            task.owner = owner;
+        }
+        if task.status == TaskStatus::Pending {
+            task.status = TaskStatus::InProgress;
+        }
+        task.updated_at = now_ts();
+        self.save(&task)?;
+        self.render_json(&task)
+    }
+
+    pub fn unbind_worktree(&mut self, task_id: u64) -> Result<String> {
+        let mut task = self.load(task_id)?;
+        task.worktree.clear();
+        task.worktree_state = WorktreeState::Unbound;
+        task.updated_at = now_ts();
+        self.save(&task)?;
+        self.render_json(&task)
+    }
+
+    pub fn record_closeout(
+        &mut self,
+        task_id: u64,
+        action: CloseoutAction,
+        reason: impl Into<String>,
+        keep_binding: bool,
+    ) -> Result<String> {
+        let mut task = self.load(task_id)?;
+        task.closeout = Some(CloseoutRecord::new(action, reason));
+        task.worktree_state = action.state();
+        if !keep_binding {
+            task.worktree.clear();
+        }
+        task.updated_at = now_ts();
         self.save(&task)?;
         self.render_json(&task)
     }
@@ -155,19 +286,30 @@ impl TaskManager {
                 let blocked = if task.blocked_by.is_empty() {
                     String::new()
                 } else {
-                    format!(" (blocked by: {:?})", task.blocked_by)
+                    format!(" blocked_by={:?}", task.blocked_by)
                 };
                 let owner = if task.owner.is_empty() {
                     String::new()
                 } else {
                     format!(" owner={}", task.owner)
                 };
+                let worktree = if task.worktree.is_empty() {
+                    if task.last_worktree.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" last_wt={}({})", task.last_worktree, task.worktree_state)
+                    }
+                } else {
+                    format!(" wt={}({})", task.worktree, task.worktree_state)
+                };
+
                 format!(
-                    "{} #{}: {}{}{}",
+                    "{} #{}: {}{}{}{}",
                     task.status.marker(),
                     task.id,
                     task.subject,
                     owner,
+                    worktree,
                     blocked
                 )
             })
@@ -178,8 +320,8 @@ impl TaskManager {
 
     fn max_task_id(dir: &Path) -> Result<u64> {
         let mut max_id = 0;
-        for entry in fs::read_dir(dir)
-            .with_context(|| format!("failed to read task directory {}", dir.display()))?
+        for entry in
+            fs::read_dir(dir).with_context(|| format!("failed to read {}", dir.display()))?
         {
             let entry = entry?;
             let path = entry.path();
@@ -247,6 +389,7 @@ impl TaskManager {
         for mut task in self.load_all()? {
             if task.blocked_by.contains(&completed_id) {
                 task.blocked_by.retain(|id| *id != completed_id);
+                task.updated_at = now_ts();
                 self.save(&task)?;
             }
         }
@@ -282,8 +425,41 @@ impl SharedTaskManager {
         self.with_manager(|manager| manager.get(task_id))
     }
 
+    pub fn get_record(&self, task_id: u64) -> Result<TaskRecord> {
+        self.with_manager(|manager| manager.get_record(task_id))
+    }
+
+    pub fn exists(&self, task_id: u64) -> bool {
+        self.with_manager(|manager| Ok(manager.exists(task_id)))
+            .unwrap_or(false)
+    }
+
     pub fn update(&self, task_id: u64, update: TaskUpdate) -> Result<String> {
         self.with_manager(|manager| manager.update(task_id, update))
+    }
+
+    pub fn bind_worktree(
+        &self,
+        task_id: u64,
+        worktree: impl Into<String>,
+        owner: Option<String>,
+    ) -> Result<String> {
+        self.with_manager(|manager| manager.bind_worktree(task_id, worktree, owner))
+    }
+
+    pub fn unbind_worktree(&self, task_id: u64) -> Result<String> {
+        self.with_manager(|manager| manager.unbind_worktree(task_id))
+    }
+
+    pub fn record_closeout(
+        &self,
+        task_id: u64,
+        action: CloseoutAction,
+        reason: impl Into<String>,
+        keep_binding: bool,
+    ) -> Result<String> {
+        let reason = reason.into();
+        self.with_manager(|manager| manager.record_closeout(task_id, action, reason, keep_binding))
     }
 
     pub fn list_all(&self) -> Result<String> {

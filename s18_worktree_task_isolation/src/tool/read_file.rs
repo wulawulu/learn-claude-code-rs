@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::path::PathBuf;
 
 use crate::{
     ToolSpec,
@@ -9,10 +10,12 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokio::fs;
 
-pub struct ReadFileTool;
+pub struct ReadFileTool {
+    work_dir: PathBuf,
+}
 
-pub fn read_file_tool() -> Box<dyn Tool> {
-    Box::new(ReadFileTool {}) as Box<dyn Tool>
+pub fn read_file_tool(work_dir: PathBuf) -> Box<dyn Tool> {
+    Box::new(ReadFileTool { work_dir }) as Box<dyn Tool>
 }
 
 #[async_trait]
@@ -22,7 +25,7 @@ impl Tool for ReadFileTool {
             .get("path")
             .and_then(|v| v.as_str())
             .context("Invalid path")?;
-        let path = safe_path(path)?;
+        let path = safe_path(&self.work_dir, path)?;
 
         let limit = input.get("limit").and_then(|v| v.as_u64());
 
@@ -31,7 +34,6 @@ impl Tool for ReadFileTool {
             .map_err(|e| anyhow::anyhow!("Error: {}", e))?;
 
         let mut lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
-
         if let Some(limit) = limit
             && (limit as usize) < lines.len()
         {
@@ -40,9 +42,7 @@ impl Tool for ReadFileTool {
             lines.push(format!("... ({} more lines)", remaining));
         }
 
-        let result = lines.join("\n");
-
-        Ok(result.chars().take(50000).collect())
+        Ok(lines.join("\n").chars().take(50_000).collect())
     }
 
     fn name(&self) -> Cow<'_, str> {
@@ -52,7 +52,7 @@ impl Tool for ReadFileTool {
     fn tool_spec(&self) -> ToolSpec {
         ToolSpec {
             name: "read_file".to_string(),
-            description: Some("Read file contents.".to_string()),
+            description: Some("Read file contents from the current workspace scope.".to_string()),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {

@@ -1,9 +1,15 @@
 pub mod task;
 pub mod tool;
+pub mod worktree;
 pub use anthropic_ai_sdk::types::message::Tool as ToolSpec;
 use serde_json::Value;
 
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    process::Command,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use anthropic_ai_sdk::{
     client::{AnthropicClient, AnthropicClientBuilder},
@@ -32,6 +38,13 @@ pub fn get_llm_client() -> anyhow::Result<AnthropicClient> {
     Ok(client)
 }
 
+pub fn canonical_work_dir(work_dir: impl AsRef<Path>) -> Result<PathBuf> {
+    work_dir
+        .as_ref()
+        .canonicalize()
+        .with_context(|| format!("failed to resolve work dir {}", work_dir.as_ref().display()))
+}
+
 pub struct LoopState {
     pub client: AnthropicClient,
     pub context: Vec<Message>,
@@ -57,17 +70,13 @@ impl LoopState {
     }
 
     pub async fn agent_loop(&mut self) -> Result<()> {
-        let system = format!(
-            "You are a coding agent at {}. Use task tools to plan and track work.",
-            std::env::current_dir()?.display(),
-        );
         for _ in 0..self.max_round {
             let request = CreateMessageParams::new(RequiredMessageParams {
                 model: MODEL.to_string(),
                 messages: self.context.clone(),
                 max_tokens: 8000,
             })
-            .with_system(&system)
+            .with_system(&self.system_prompt)
             .with_tools(self.tools.values().map(|tool| tool.tool_spec()).collect());
 
             let response = self.client.create_message(Some(&request)).await?;
@@ -126,6 +135,26 @@ impl LoopState {
     }
 }
 
+pub fn detect_repo_root(cwd: &Path) -> Option<PathBuf> {
+    let output = Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .current_dir(cwd)
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if text.is_empty() {
+        return None;
+    }
+
+    let root = PathBuf::from(text);
+    root.exists().then_some(root)
+}
+
 pub fn extract_text(content: &MessageContent) -> String {
     match content {
         MessageContent::Text { content } => content.clone(),
@@ -141,4 +170,11 @@ pub fn extract_text(content: &MessageContent) -> String {
             .collect::<Vec<_>>()
             .join("\n"),
     }
+}
+
+pub fn now_ts() -> f64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs_f64())
+        .unwrap_or_default()
 }

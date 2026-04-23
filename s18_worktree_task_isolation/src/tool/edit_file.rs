@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::path::PathBuf;
 
 use crate::{
     ToolSpec,
@@ -9,10 +10,12 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokio::fs;
 
-pub struct EditFileTool;
+pub struct EditFileTool {
+    work_dir: PathBuf,
+}
 
-pub fn edit_file_tool() -> Box<dyn Tool> {
-    Box::new(EditFileTool {}) as Box<dyn Tool>
+pub fn edit_file_tool(work_dir: PathBuf) -> Box<dyn Tool> {
+    Box::new(EditFileTool { work_dir }) as Box<dyn Tool>
 }
 
 #[async_trait]
@@ -22,13 +25,12 @@ impl Tool for EditFileTool {
             .get("path")
             .and_then(|v| v.as_str())
             .context("Invalid path")?;
-        let path = safe_path(path)?;
+        let path = safe_path(&self.work_dir, path)?;
 
         let old_text = input
             .get("old_text")
             .and_then(|v| v.as_str())
             .context("Invalid old_text")?;
-
         let new_text = input
             .get("new_text")
             .and_then(|v| v.as_str())
@@ -39,14 +41,10 @@ impl Tool for EditFileTool {
             .map_err(|e| anyhow::anyhow!("Error: {}", e))?;
 
         if !content.contains(old_text) {
-            return Err(anyhow::anyhow!(
-                "Error: Text not found in {}",
-                path.display()
-            ));
+            anyhow::bail!("Error: Text not found in {}", path.display());
         }
 
         let updated = content.replacen(old_text, new_text, 1);
-
         fs::write(&path, updated)
             .await
             .map_err(|e| anyhow::anyhow!("Error: {}", e))?;
@@ -61,7 +59,7 @@ impl Tool for EditFileTool {
     fn tool_spec(&self) -> ToolSpec {
         ToolSpec {
             name: "edit_file".to_string(),
-            description: Some("Replace exact text in file.".to_string()),
+            description: Some("Replace exact text inside the current workspace scope.".to_string()),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
