@@ -15,7 +15,9 @@ members = [
     "s13_background_tasks",
     "s14_cron_scheduler",
     "s15_agent_teams",
-    "s16_team_protocols", "s17_autonomous_agents",
+    "s16_team_protocols",
+    "s17_autonomous_agents",
+    "s18_worktree_task_isolation",
 ]
 resolver = "3"
 
