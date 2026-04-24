@@ -18,6 +18,7 @@ members = [
     "s16_team_protocols",
     "s17_autonomous_agents",
     "s18_worktree_task_isolation",
+    "s19_mcp_plugin"
 ]
 resolver = "3"
 
