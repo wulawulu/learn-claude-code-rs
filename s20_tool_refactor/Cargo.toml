@@ -1,0 +1,19 @@
+[package]
+name = "s20_tool_refactor"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anthropic-ai-sdk = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+dotenvy = { workspace = true }
+inquire = { workspace = true }
+schemars.workspace = true
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+s20_tool_refactor_macros = { path = "../s20_tool_refactor_macros" }
+tokio = { workspace = true }
+walkdir = { workspace = true }

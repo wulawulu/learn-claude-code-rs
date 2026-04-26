@@ -18,7 +18,9 @@ members = [
     "s16_team_protocols",
     "s17_autonomous_agents",
     "s18_worktree_task_isolation",
-    "s19_mcp_plugin"
+    "s19_mcp_plugin",
+    "s20_tool_refactor",
+    "s20_tool_refactor_macros",
 ]
 resolver = "3"
 
@@ -38,12 +40,16 @@ dotenvy = "0.15.7"
 fs4 = "0.13"
 inquire = "0.9.4"
 regex = "1.12.2"
+schemars = "1.2.1"
 serde = "1.0.228"
 serde_json = "1.0.149"
 serde_yaml = "0.9.34"
+syn = { version = "2.0.111", features = ["full"] }
 strum = "0.28.0"
 strum_macros = "0.28.0"
 tera = "1.20.1"
 tokio = { version = "1.52.1", features = ["rt-multi-thread", "macros", "rt"] }
 walkdir = "2.5.0"
 wildmatch = "2.5.0"
+proc-macro2 = "1.0.103"
+quote = "1.0.42"
