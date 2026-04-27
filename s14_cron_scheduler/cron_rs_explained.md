@@ -548,11 +548,11 @@ self.with_tasks(|store| {
 
 - 把 cron 字符串解析成 `Schedule`
 
-这里已经不再为了对齐 Python 原版去做额外适配层。
+这里没有再额外实现一层适配或手写解析器。
 
 也就是说：
 
-- Rust 版这里选择的是 crate 的原生表达式语义
+- 这里选择的是 `cron` crate 的原生表达式语义
 
 ### `schedule_matches()`
 
@@ -582,7 +582,7 @@ self.with_tasks(|store| {
 - 如果 cron 的分钟字段正好是 `0` 或 `30`
 - 就基于表达式 hash 算一个稳定的小偏移
 
-这和 Python 原版的教学意图一致：
+这个设计的目的很明确：
 
 - 避免大量 recurring 任务都堆在整点/半点同时触发
 
