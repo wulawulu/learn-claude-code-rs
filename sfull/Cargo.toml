@@ -1,0 +1,25 @@
+[package]
+name = "sfull"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anthropic-ai-sdk = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+derive_builder = { workspace = true }
+dotenvy = { workspace = true }
+inquire = { workspace = true }
+rmcp = { version = "0.17.0", default-features = false, features = ["client", "transport-child-process"] }
+schemars.workspace = true
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+s20_tool_refactor_macros = { path = "../s20_tool_refactor_macros" }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+tera = { workspace = true }
+tokio = { workspace = true, features = ["fs", "process", "sync", "time"] }
+walkdir = { workspace = true }
