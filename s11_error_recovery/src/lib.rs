@@ -20,7 +20,10 @@ use anyhow::{Context, Result};
 
 use crate::tool::Tool;
 
-pub const MODEL: &str = "deepseek-chat";
+pub fn get_model() -> anyhow::Result<String> {
+    dotenvy::dotenv().ok();
+    std::env::var("ANTHROPIC_MODEL").context("ANTHROPIC_MODEL is not set")
+}
 
 const MAX_RECOVERY_ATTEMPTS: u32 = 3;
 const BACKOFF_BASE_DELAY_SECS: f64 = 1.0;
@@ -81,7 +84,7 @@ impl LoopState {
 
         loop {
             let request = CreateMessageParams::new(RequiredMessageParams {
-                model: MODEL.to_string(),
+                model: get_model()?,
                 messages: self.context.clone(),
                 max_tokens: 8000,
             })
@@ -164,7 +167,7 @@ impl LoopState {
         );
 
         let request = CreateMessageParams::new(RequiredMessageParams {
-            model: MODEL.to_string(),
+            model: get_model()?,
             messages: vec![Message::new_text(Role::User, prompt)],
             max_tokens: 4000,
         });

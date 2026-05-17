@@ -15,6 +15,7 @@ Configure `.env`:
 ```bash
 ANTHROPIC_API_KEY=your_api_key
 ANTHROPIC_BASE_URL=your_anthropic_compatible_base_url
+ANTHROPIC_MODEL=your_model_name
 ```
 
 Run:

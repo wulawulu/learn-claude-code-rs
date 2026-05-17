@@ -23,7 +23,10 @@ use crate::{
     tool::Tool,
 };
 
-pub const MODEL: &str = "deepseek-chat";
+pub fn get_model() -> anyhow::Result<String> {
+    dotenvy::dotenv().ok();
+    std::env::var("ANTHROPIC_MODEL").context("ANTHROPIC_MODEL is not set")
+}
 
 pub fn get_llm_client() -> anyhow::Result<AnthropicClient> {
     dotenvy::dotenv().ok();
@@ -68,7 +71,7 @@ The user controls permissions. Some tool calls may be denied."#,
         );
         loop {
             let request = CreateMessageParams::new(RequiredMessageParams {
-                model: MODEL.to_string(),
+                model: get_model()?,
                 messages: self.context.clone(),
                 max_tokens: 8000,
             })

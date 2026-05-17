@@ -9,7 +9,7 @@ use std::{
 
 use anthropic_ai_sdk::types::message::{CreateMessageParams, MessageClient, RequiredMessageParams};
 
-use crate::{LoopState, MODEL};
+use crate::{LoopState, get_model};
 
 const KEEP_RECENT_TOOL_RESULTS: usize = 3;
 const PERSIST_THRESHOLD: usize = 30000;
@@ -185,7 +185,7 @@ impl LoopState {
         );
 
         let request = CreateMessageParams::new(RequiredMessageParams {
-            model: MODEL.to_string(),
+            model: get_model()?,
             messages: vec![Message::new_text(Role::User, prompt)],
             max_tokens: 2000,
         });

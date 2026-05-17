@@ -14,7 +14,10 @@ use inquire::Text;
 
 use s03_todo_write::tool::{Tool, toolset};
 
-const MODEL: &str = "deepseek-chat";
+fn get_model() -> anyhow::Result<String> {
+    dotenvy::dotenv().ok();
+    std::env::var("ANTHROPIC_MODEL").context("ANTHROPIC_MODEL is not set")
+}
 const SYSTEM: &str = r#"You are a coding agent.
 Use the todo tool for multi-step work.
 Keep exactly one step in_progress when a task has multiple steps.
@@ -163,7 +166,7 @@ fn extract_text(content: &MessageContent) -> String {
 async fn agent_loop(state: &mut LoopState) -> Result<()> {
     loop {
         let request = CreateMessageParams::new(RequiredMessageParams {
-            model: MODEL.to_string(),
+            model: get_model()?,
             messages: state.context.clone(),
             max_tokens: 8000,
         })

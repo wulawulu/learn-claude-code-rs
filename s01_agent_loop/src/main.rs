@@ -13,7 +13,10 @@ use anyhow::{Context, Result};
 use inquire::Text;
 use tokio::{process::Command, time::timeout};
 
-const MODEL: &str = "deepseek-chat";
+fn get_model() -> anyhow::Result<String> {
+    dotenvy::dotenv().ok();
+    std::env::var("ANTHROPIC_MODEL").context("ANTHROPIC_MODEL is not set")
+}
 const SYSTEM: &str = r#"You are a coding agent.
 Use bash to inspect and change the workspace. Act first, then report clearly.
 "#;
@@ -183,7 +186,7 @@ async fn execute_tool_call(content: &[ContentBlock]) -> Option<Vec<ContentBlock>
 
 async fn run_one_turn(state: &mut LoopState) -> Result<bool> {
     let request = CreateMessageParams::new(RequiredMessageParams {
-        model: MODEL.to_string(),
+        model: get_model()?,
         messages: state.context.clone(),
         max_tokens: 8000,
     })

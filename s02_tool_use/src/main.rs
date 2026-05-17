@@ -14,7 +14,10 @@ use inquire::Text;
 
 use s02_tool_use::tool::{Tool, toolset};
 
-const MODEL: &str = "deepseek-chat";
+fn get_model() -> anyhow::Result<String> {
+    dotenvy::dotenv().ok();
+    std::env::var("ANTHROPIC_MODEL").context("ANTHROPIC_MODEL is not set")
+}
 const SYSTEM: &str = r#"You are a coding agent.
 Use bash to inspect and change the workspace. Act first, then report clearly.
 "#;
@@ -220,7 +223,7 @@ pub fn normalize_messages(messages: &[Message]) -> Vec<Message> {
 async fn agent_loop(state: &mut LoopState) -> Result<()> {
     loop {
         let request = CreateMessageParams::new(RequiredMessageParams {
-            model: MODEL.to_string(),
+            model: get_model()?,
             messages: normalize_messages(&state.context),
             max_tokens: 8000,
         })

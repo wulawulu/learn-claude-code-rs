@@ -15,7 +15,10 @@
 ```bash
 ANTHROPIC_API_KEY=your_api_key
 ANTHROPIC_BASE_URL=your_anthropic_compatible_base_url
+ANTHROPIC_MODEL=your_model_name
 ```
+
+`ANTHROPIC_BASE_URL` 可以使用任意 Anthropic Messages API 兼容服务的地址；`ANTHROPIC_MODEL` 填该服务商支持的模型名。更多国产模型示例见仓库根目录的 `README.zh.md`。
 
 运行：
 

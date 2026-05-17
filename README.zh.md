@@ -58,7 +58,22 @@ cp .env.example .env
 ```bash
 ANTHROPIC_API_KEY=your_api_key
 ANTHROPIC_BASE_URL=your_anthropic_compatible_base_url
+ANTHROPIC_MODEL=your_model_name
 ```
+
+这里的 `ANTHROPIC_*` 变量名只是因为示例代码使用 Anthropic SDK；后端不一定必须是 Anthropic 官方服务，只要提供 Anthropic Messages API 兼容接口即可。也就是说，`ANTHROPIC_BASE_URL` 应该填服务商给出的 Anthropic 兼容地址，而不是 OpenAI 兼容地址。
+
+常见国产模型服务的配置示例：
+
+| 服务商 | `ANTHROPIC_BASE_URL` 示例 | 常见模型名示例 |
+| --- | --- | --- |
+| DeepSeek | `https://api.deepseek.com/anthropic` | `deepseek-v4-pro`, `deepseek-v4-flash` |
+| 智谱 GLM | `https://open.bigmodel.cn/api/anthropic` | `glm-5.1`, `glm-5` |
+| 阿里云百炼 / 通义千问 | `https://dashscope.aliyuncs.com/apps/anthropic` | `qwen3.6-plus`, `qwen3-coder-plus` |
+| Kimi / 月之暗面 | `https://api.moonshot.cn/anthropic` | `kimi-k2.5` |
+| MiniMax | `https://api.minimaxi.com/anthropic`（国内）或 `https://api.minimax.io/anthropic`（国际） | `MiniMax-M2.7` |
+
+不同平台的 URL、模型名和鉴权字段可能会调整，实际以服务商控制台或官方文档为准。切换服务商时，通常只需要在 `.env` 中同时修改 `ANTHROPIC_BASE_URL` 和 `ANTHROPIC_MODEL`。
 
 运行第一章：
 

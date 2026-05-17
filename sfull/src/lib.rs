@@ -44,7 +44,10 @@ use crate::recovery::{
 };
 use crate::tool::{ToolContext, ToolRouter};
 
-pub const MODEL: &str = "deepseek-v4-pro";
+pub fn get_model() -> anyhow::Result<String> {
+    dotenvy::dotenv().ok();
+    std::env::var("ANTHROPIC_MODEL").context("ANTHROPIC_MODEL is not set")
+}
 const CONTEXT_LIMIT: usize = 50_000;
 
 pub fn get_llm_client() -> anyhow::Result<AnthropicClient> {
@@ -119,7 +122,7 @@ impl Agent {
             }
 
             let request = CreateMessageParams::new(RequiredMessageParams {
-                model: MODEL.to_string(),
+                model: get_model()?,
                 messages: self.runtime.context.clone(),
                 max_tokens: 8000,
             })
@@ -407,7 +410,7 @@ Be compact but concrete.\n\n\
         }
 
         let request = CreateMessageParams::new(RequiredMessageParams {
-            model: MODEL.to_string(),
+            model: get_model()?,
             messages: vec![Message::new_text(Role::User, prompt)],
             max_tokens: 2000,
         });
@@ -511,7 +514,10 @@ fn load_dynamic_context(workdir: &Path) -> String {
         "# Dynamic context".to_string(),
         format!("Current date: {}", Utc::now().date_naive()),
         format!("Working directory: {}", workdir.display()),
-        format!("Model: {}", MODEL),
+        format!(
+            "Model: {}",
+            get_model().unwrap_or_else(|_| "unknown".to_string())
+        ),
         format!("Platform: {}", std::env::consts::OS),
     ];
     lines.join("\n")

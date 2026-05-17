@@ -22,7 +22,10 @@ use crate::{
     tool::Tool,
 };
 
-pub const MODEL: &str = "deepseek-chat";
+pub fn get_model() -> anyhow::Result<String> {
+    dotenvy::dotenv().ok();
+    std::env::var("ANTHROPIC_MODEL").context("ANTHROPIC_MODEL is not set")
+}
 
 pub fn get_llm_client() -> anyhow::Result<AnthropicClient> {
     dotenvy::dotenv().ok();
@@ -63,7 +66,7 @@ impl LoopState {
         loop {
             let system = self.build_system_prompt()?;
             let request = CreateMessageParams::new(RequiredMessageParams {
-                model: MODEL.to_string(),
+                model: get_model()?,
                 messages: self.context.clone(),
                 max_tokens: 8000,
             })
