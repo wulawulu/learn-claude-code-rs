@@ -21,7 +21,7 @@ members = [
     "s19_mcp_plugin",
     "s20_tool_refactor",
     "s20_tool_refactor_macros", "sfull",
-    "s21_llm_trait",
+    "s02_llm_trait",
 ]
 resolver = "3"
 

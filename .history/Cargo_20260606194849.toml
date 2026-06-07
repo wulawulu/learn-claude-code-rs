@@ -2,6 +2,7 @@
 members = [
     "s01_agent_loop",
     "s02_tool_use",
+    "s02_llm_trait",
     "s03_todo_write",
     "s04_subagent",
     "s05_skill_loading",
@@ -21,7 +22,6 @@ members = [
     "s19_mcp_plugin",
     "s20_tool_refactor",
     "s20_tool_refactor_macros", "sfull",
-    "s21_llm_trait",
 ]
 resolver = "3"
 
