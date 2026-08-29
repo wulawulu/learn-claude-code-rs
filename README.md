@@ -5,7 +5,7 @@ English | [中文](./README.zh.md)
 
 A progressive AI Agent Harness tutorial written in Rust.
 
-This repository is a Rust-oriented learning path for building an agent harness. It starts with the smallest agent loop and gradually adds tools, planning, subagents, skills, context compaction, permissions, hooks, memory, multi-agent collaboration, worktree isolation, MCP/plugins, and tool routing.
+This repository is a Rust-oriented learning path for building an agent harness. It starts with the smallest agent loop and gradually adds tools, planning, subagents, skills, context compaction, permissions, hooks, memory, multi-agent collaboration, worktree isolation, MCP/plugins, tool routing, and agent evaluation.
 
 This project was inspired by [shareAI-lab/learn-claude-code](https://github.com/shareAI-lab/learn-claude-code/tree/main). Its chapter design, content organization, and some code ideas reference that project to a certain extent, then reimplement and adapt them for the Rust ecosystem. It is not a line-by-line copy or a simple port; it reorganizes the agent harness topic itself into a runnable Rust tutorial.
 
@@ -26,6 +26,7 @@ Most LLM examples stop at tool calling. This repo focuses on the runtime around 
 - worktree isolation
 - MCP plugins
 - typed tool routing
+- agent evaluation
 
 ## Architecture
 
@@ -105,6 +106,7 @@ Each chapter is an independent crate that can be run, read, and modified on its 
 | 18 | [`s18_worktree_task_isolation`](./s18_worktree_task_isolation) | Worktree Isolation | Use git worktrees to isolate task execution environments. Docs: [`s18.en.md`](./s18_worktree_task_isolation/s18.en.md). |
 | 19 | [`s19_mcp_plugin`](./s19_mcp_plugin) | MCP Plugin | Connect MCP/plugin tools to the same permission and tool-result loop. Docs: [`s19.en.md`](./s19_mcp_plugin/s19.en.md). |
 | 20 | [`s20_tool_refactor`](./s20_tool_refactor) | Tool Refactor | Refactor tool registration, routing, dispatch, and macro support. Docs: [`s20.en.md`](./s20_tool_refactor/s20.en.md). |
+| 21 | [`s21_agent_evaluation`](./s21_agent_evaluation) | Agent Evaluation | Add eval cases, repeatable environments, observable trajectories, deterministic assertions, and LLM-as-a-Judge to the simple s20 agent. Docs: [`s21.en.md`](./s21_agent_evaluation/s21.en.md). |
 | Full | [`sfull`](./sfull) | Complete Version | Integrate previous chapters into one complete agent harness. Docs: [`sfull.en.md`](./sfull/sfull.en.md). |
 
 ## Recommended Reading Order
@@ -114,7 +116,8 @@ Each chapter is an independent crate that can be run, read, and modified on its 
 3. Read `s05_skill_loading` through `s08_hook_system` to see how a demo becomes an extensible system.
 4. Read `s09_memory_system` through `s14_cron_scheduler` to understand state, long-running work, and scheduling.
 5. Read `s15_agent_teams` through `s20_tool_refactor` to understand multi-agent collaboration, isolated execution, plugins, and tool routing.
-6. Read `sfull` last to see how the pieces fit together.
+6. Read `s21_agent_evaluation` to understand how to determine whether an agent actually completed its task.
+7. Read `sfull` last to see how the pieces fit together.
 
 ## Project Structure
 
@@ -143,6 +146,7 @@ Each chapter is an independent crate that can be run, read, and modified on its 
 ├── s19_mcp_plugin/
 ├── s20_tool_refactor/
 ├── s20_tool_refactor_macros/
+├── s21_agent_evaluation/
 ├── sfull/
 └── skills/
 ```

@@ -1,0 +1,17 @@
+[package]
+name = "s21_agent_evaluation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anthropic-ai-sdk = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+dotenvy = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+s20_tool_refactor_macros = { path = "../s20_tool_refactor_macros" }
+tempfile = "3.27.0"
+tokio = { workspace = true, features = ["fs", "process", "time"] }

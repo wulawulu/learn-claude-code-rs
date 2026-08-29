@@ -12,7 +12,7 @@ chrono = { workspace = true, features = ["serde"] }
 derive_builder = { workspace = true }
 dotenvy = { workspace = true }
 inquire = { workspace = true }
-rmcp = { version = "0.17.0", default-features = false, features = ["client", "transport-child-process"] }
+rmcp = { version = "1.4.0", default-features = false, features = ["client", "transport-child-process"] }
 schemars.workspace = true
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -20,7 +20,9 @@ members = [
     "s18_worktree_task_isolation",
     "s19_mcp_plugin",
     "s20_tool_refactor",
-    "s20_tool_refactor_macros", "sfull",
+    "s20_tool_refactor_macros",
+    "s21_agent_evaluation",
+    "sfull",
 ]
 resolver = "3"
 

@@ -5,7 +5,7 @@
 
 一个用 Rust 编写的渐进式 AI Agent Harness 教程。
 
-这个仓库是一条面向 Rust 生态的 Agent Harness 学习路线：从最小的 agent loop 开始，逐步加入工具系统、任务规划、子代理、技能、上下文压缩、权限、hook、memory、多 agent 协作、worktree 隔离、MCP/plugin 和工具路由等能力。
+这个仓库是一条面向 Rust 生态的 Agent Harness 学习路线：从最小的 agent loop 开始，逐步加入工具系统、任务规划、子代理、技能、上下文压缩、权限、hook、memory、多 agent 协作、worktree 隔离、MCP/plugin、工具路由和 Agent Evaluation 等能力。
 
 本项目受到 [shareAI-lab/learn-claude-code](https://github.com/shareAI-lab/learn-claude-code/tree/main) 启发。章节设计、部分内容组织和代码思路都一定程度参考了该项目，并在 Rust 生态下重新实现和调整；它不是逐字照搬或简单移植，而是围绕 agent harness 这个领域本身重新梳理。
 
@@ -26,6 +26,7 @@
 - worktree 隔离
 - MCP 插件
 - 强类型工具路由
+- Agent Evaluation
 
 ## 架构图
 
@@ -119,6 +120,7 @@ cargo check --workspace
 | 18 | [`s18_worktree_task_isolation`](./s18_worktree_task_isolation) | Worktree Isolation | 用 git worktree 隔离任务执行环境，降低多任务修改互相污染的风险。配套文档见 [`s18.md`](./s18_worktree_task_isolation/s18.md)。 |
 | 19 | [`s19_mcp_plugin`](./s19_mcp_plugin) | MCP Plugin | 把 MCP/plugin 工具接入 agent harness，并复用同一套权限和 tool result 回路。配套文档见 [`s19.md`](./s19_mcp_plugin/s19.md)。 |
 | 20 | [`s20_tool_refactor`](./s20_tool_refactor) | Tool Refactor | 重构工具注册、路由和派发机制，并引入宏辅助。配套文档见 [`s20.md`](./s20_tool_refactor/s20.md)，设计记录见 [`tool-router-design.zh.md`](./s20_tool_refactor/tool-router-design.zh.md)。 |
+| 21 | [`s21_agent_evaluation`](./s21_agent_evaluation) | Agent Evaluation | 从 s20 的简单 Agent 出发，引入 Eval Case、可重复环境、Observable Trajectory、确定性断言和 LLM-as-a-Judge。配套文档见 [`s21.md`](./s21_agent_evaluation/s21.md)。 |
 | Full | [`sfull`](./sfull) | 完整版本 | 将前面章节的能力整合到一个完整 agent harness 中。配套文档见 [`sfull.md`](./sfull/sfull.md)。 |
 
 ## 推荐阅读方式
@@ -130,7 +132,8 @@ cargo check --workspace
 3. 阅读 `s05_skill_loading` 到 `s08_hook_system`，理解如何把 agent 从 demo 变成可扩展系统。
 4. 阅读 `s09_memory_system` 到 `s14_cron_scheduler`，理解状态、长期任务和调度。
 5. 阅读 `s15_agent_teams` 到 `s20_tool_refactor`，理解多 agent、隔离执行、插件化和工具路由。
-6. 最后看 `sfull`，把前面的设计串起来。
+6. 阅读 `s21_agent_evaluation`，理解如何判断 Agent 是否真的完成任务。
+7. 最后看 `sfull`，把前面的设计串起来。
 
 ## 项目结构
 
@@ -159,6 +162,7 @@ cargo check --workspace
 ├── s19_mcp_plugin/               # MCP/plugin
 ├── s20_tool_refactor/            # 工具系统重构
 ├── s20_tool_refactor_macros/     # 工具宏
+├── s21_agent_evaluation/         # Agent Evaluation
 ├── sfull/                        # 完整整合版本
 └── skills/                       # 示例技能
 ```

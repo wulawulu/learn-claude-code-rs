@@ -1,0 +1,10 @@
+{
+  "services": {
+    "service-a": {
+      "timeout": 30
+    },
+    "service-b": {
+      "timeout": 60
+    }
+  }
+}
