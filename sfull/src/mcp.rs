@@ -148,15 +148,15 @@ impl McpClient {
             }
         };
 
+        let mut params = CallToolRequestParams::new(tool_name.to_string());
+        if let Some(arguments) = arguments {
+            params = params.with_arguments(arguments);
+        }
+
         let result = self
             .service
             .peer()
-            .call_tool(CallToolRequestParams {
-                meta: None,
-                name: tool_name.to_string().into(),
-                arguments,
-                task: None,
-            })
+            .call_tool(params)
             .await
             .with_context(|| format!("failed to call MCP tool {tool_name}"))?;
 

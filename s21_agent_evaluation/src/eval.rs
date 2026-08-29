@@ -269,7 +269,9 @@ pub fn default_cases() -> Vec<EvalCase> {
         },
         EvalCase {
             name: "rust_explain".to_string(),
-            prompt: r#"Explain to a Rust beginner why this code fails to compile.
+            prompt: r#"Answer directly from the code shown below. Do not use tools for this task.
+
+Explain to a Rust beginner why this code fails to compile.
 
 Explain the borrowing problem and provide at least one valid fix.
 
