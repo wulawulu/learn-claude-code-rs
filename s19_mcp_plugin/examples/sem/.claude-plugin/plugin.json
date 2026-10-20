@@ -1,0 +1,11 @@
+{
+  "name": "sem-code",
+  "version": "1.0.0",
+  "mcpServers": {
+    "code": {
+      "command": "sem",
+      "args": ["mcp"],
+      "env": {}
+    }
+  }
+}
