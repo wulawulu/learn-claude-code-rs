@@ -1,0 +1,19 @@
+{
+  "name": "deed-page",
+  "version": "1.0.0",
+  "mcpServers": {
+    "pages": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote@0.14.3",
+        "https://deed.page/mcp",
+        "--transport",
+        "http-only",
+        "--header",
+        "User-Agent:learn-claude-code-rs/0.1.0"
+      ],
+      "env": {}
+    }
+  }
+}

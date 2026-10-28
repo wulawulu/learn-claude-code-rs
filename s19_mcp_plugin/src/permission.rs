@@ -413,6 +413,28 @@ mod tests {
     }
 
     #[test]
+    fn deed_page_tools_get_read_write_and_high_risk() {
+        let prefix = "mcp__deed-page__pages__";
+        for (tool, risk) in [
+            ("get_site", CapabilityRisk::Read),
+            ("publish_site", CapabilityRisk::Write),
+            ("delete_site", CapabilityRisk::High),
+        ] {
+            let intent = normalize_capability(&format!("{prefix}{tool}"), &json!({}));
+            assert_eq!(intent.server.as_deref(), Some("deed-page__pages"));
+            assert_eq!(intent.risk, risk, "{tool}");
+        }
+
+        let mut manager = PermissionManager::try_new(PermissionMode::Default).unwrap();
+        let publish = format!("{prefix}publish_site");
+        let input = json!({"files": {"index.html": "<h1>hi</h1>"}, "ttl_seconds": 600});
+        assert_eq!(
+            manager.check(&publish, &input).behavior,
+            PermissionBehavior::Ask
+        );
+    }
+
+    #[test]
     fn always_allow_adds_exact_tool_allowlist_entry() {
         let mut manager = PermissionManager::try_new(PermissionMode::Default).unwrap();
 
